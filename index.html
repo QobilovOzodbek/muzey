@@ -1,0 +1,2252 @@
+<!doctype html>
+<html lang="uz">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <title>Sevgi Muzeyi - Bizning Xotiralar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: none;
+      }
+      body,
+      html {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: #12090d;
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+      .font-serif-romantic {
+        font-family: "Cormorant Garamond", serif;
+      }
+      #canvas-container {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+      }
+      .glass-panel {
+        background: rgba(24, 13, 20, 0.78);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(251, 191, 36, 0.28);
+        box-shadow:
+          0 20px 50px rgba(0, 0, 0, 0.6),
+          inset 0 0 20px rgba(244, 63, 94, 0.12);
+      }
+      .avatar-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .avatar-card.selected {
+        border-color: #fbbf24;
+        background: linear-gradient(
+          145deg,
+          rgba(244, 63, 94, 0.28),
+          rgba(251, 191, 36, 0.18)
+        );
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 12px 30px -5px rgba(244, 63, 94, 0.45);
+      }
+      /* Virtual Joystick Styles */
+      #joystick-zone {
+        position: absolute;
+        bottom: 28px;
+        left: 28px;
+        width: 130px;
+        height: 130px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          rgba(255, 255, 255, 0.12) 0%,
+          rgba(24, 13, 20, 0.65) 100%
+        );
+        border: 2px solid rgba(251, 191, 36, 0.45);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(8px);
+      }
+      #joystick-knob {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #fbbf24 0%, #e11d48 100%);
+        box-shadow:
+          0 4px 15px rgba(225, 29, 72, 0.6),
+          inset 0 2px 4px rgba(255, 255, 255, 0.4);
+        border: 2px solid rgba(255, 255, 255, 0.8);
+        position: absolute;
+        pointer-events: none;
+        transition: transform 0.05s linear;
+      }
+      @keyframes pulse-slow {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 0.9;
+        }
+        50% {
+          transform: scale(1.06);
+          opacity: 1;
+        }
+      }
+      .animate-pulse-slow {
+        animation: pulse-slow 2.5s infinite ease-in-out;
+      }
+      .custom-scroll::-webkit-scrollbar {
+        width: 6px;
+      }
+      .custom-scroll::-webkit-scrollbar-thumb {
+        background: rgba(251, 191, 36, 0.4);
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body class="text-amber-50">
+    <!-- 3D Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Top Navigation / HUD -->
+    <div
+      id="hud-top"
+      class="fixed top-0 left-0 right-0 p-3 sm:p-5 flex justify-between items-center z-20 pointer-events-none hidden"
+    >
+      <div
+        class="glass-panel px-4 py-2.5 rounded-2xl pointer-events-auto flex items-center gap-3"
+      >
+        <span class="text-2xl">🏛️</span>
+        <div>
+          <h1
+            class="font-serif-romantic text-xl sm:text-2xl font-bold text-amber-300 leading-none"
+          >
+            Sevgi Muzeyi
+          </h1>
+          <p
+            id="hud-section-label"
+            class="text-xs text-rose-200/90 font-medium mt-0.5"
+          >
+            📍 1-Bo'lim: Ilk Xotiralar
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3 pointer-events-auto">
+        <div
+          class="glass-panel px-3.5 py-2 rounded-2xl hidden sm:flex items-center gap-2 text-xs text-amber-200/90 border border-amber-400/30"
+        >
+          <span id="hud-player-label">O'yinchi: O'g'il bola 🤵</span>
+        </div>
+        <button
+          id="btn-change-avatar"
+          class="glass-panel hover:bg-rose-950/80 active:scale-95 transition px-3.5 py-2.5 rounded-2xl flex items-center gap-1.5 text-xs sm:text-sm font-medium text-rose-200 border border-amber-400/40 shadow-lg"
+          title="O'yinchini almashtirish"
+        >
+          <span>👫</span>
+          <span>O'yinchi</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Proximity Action Button (when near a photo frame) -->
+    <div
+      id="proximity-prompt"
+      class="fixed bottom-36 sm:bottom-12 left-1/2 -translate-x-1/2 z-20 hidden pointer-events-auto"
+    >
+      <button
+        id="btn-inspect-nearby"
+        class="animate-pulse-slow bg-gradient-to-r from-amber-500 via-rose-500 to-rose-600 text-white font-semibold px-6 py-3 rounded-full shadow-[0_0_30px_rgba(244,63,94,0.7)] border-2 border-amber-200 flex items-center gap-2.5 text-sm sm:text-base"
+      >
+        <span>🔍</span>
+        <span id="proximity-text">Suratni kattalashtirish</span>
+      </button>
+    </div>
+
+    <!-- Virtual Joystick (Bottom Left) -->
+    <div id="joystick-zone" class="hidden">
+      <div
+        class="text-[10px] text-amber-200/40 font-semibold uppercase tracking-widest absolute top-2"
+      >
+        Yurish
+      </div>
+      <div
+        class="text-[10px] text-amber-200/40 font-semibold uppercase tracking-widest absolute bottom-2"
+      >
+        Joystik
+      </div>
+      <div id="joystick-knob"></div>
+    </div>
+
+    <!-- Helper Hint (Bottom Right) -->
+    <div
+      id="hud-hint"
+      class="fixed bottom-5 right-5 z-20 hidden pointer-events-none"
+    >
+      <div
+        class="glass-panel px-4 py-2.5 rounded-2xl text-xs text-amber-100/80 max-w-[230px] sm:max-w-xs leading-relaxed"
+      >
+        <p class="font-semibold text-amber-300 mb-0.5">💡 Boshqaruv:</p>
+        <p>
+          • <b>Joystik</b> yoki <b>WASD / Strelkalar</b> orqali harakatlaning.
+        </p>
+        <p>• Muzey <b>2 ta bo'limdan</b> iborat (arka orqali o'ting).</p>
+        <p>• <b>Surat ustiga bosing</b> — u kattalashadi!</p>
+      </div>
+    </div>
+
+    <!-- START MODAL: Avatar Selection -->
+    <div
+      id="modal-start"
+      class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md"
+    >
+      <div
+        class="glass-panel rounded-3xl max-w-lg w-full p-6 sm:p-8 text-center relative overflow-hidden"
+      >
+        <div
+          class="absolute -top-20 -left-20 w-44 h-44 bg-rose-500/20 rounded-full blur-3xl pointer-events-none"
+        ></div>
+        <div
+          class="absolute -bottom-20 -right-20 w-44 h-44 bg-amber-500/20 rounded-full blur-3xl pointer-events-none"
+        ></div>
+
+        <div
+          class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-rose-500/20 border border-rose-400/30 text-rose-200 text-xs font-medium mb-3"
+        >
+          <span>💖 Maxsus sovg'a</span>
+        </div>
+
+        <h2
+          class="font-serif-romantic text-3xl sm:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-200 to-amber-300 mb-2"
+        >
+          Sevgi Muzeyiga Xush Kelibsiz
+        </h2>
+        <p class="text-xs sm:text-sm text-amber-100/75 mb-6 leading-relaxed">
+          Bizning eng go'zal 10 ta xotiramiz joy olgan 3D muzey bo'ylab sayohat
+          qiling. Boshlash uchun o'yinchi qahramonini tanlang:
+        </p>
+
+        <!-- Character Cards -->
+        <div class="grid grid-cols-2 gap-4 mb-7">
+          <!-- Boy Option -->
+          <div
+            id="select-boy"
+            onclick="selectGender('boy')"
+            class="avatar-card selected cursor-pointer rounded-2xl p-4 sm:p-5 border-2 border-white/15 bg-white/5 flex flex-col items-center"
+          >
+            <div
+              class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-blue-900/60 to-indigo-500/30 border border-amber-300/40 flex items-center justify-center mb-3 shadow-inner"
+            >
+              <!-- Cute Boy SVG -->
+              <svg
+                class="w-14 h-14 sm:w-16 sm:h-16"
+                viewBox="0 0 64 64"
+                fill="none"
+              >
+                <circle cx="32" cy="22" r="12" fill="#FDE68A" />
+                <path
+                  d="M20 20C20 12 44 12 44 20C44 16 38 14 32 14C26 14 20 16 20 20Z"
+                  fill="#27272A"
+                />
+                <rect
+                  x="20"
+                  y="34"
+                  width="24"
+                  height="22"
+                  rx="6"
+                  fill="#1E293B"
+                />
+                <path d="M28 34L32 42L36 34H28Z" fill="#F8FAFC" />
+                <path d="M30.5 36L32 44L33.5 36H30.5Z" fill="#E11D48" />
+              </svg>
+            </div>
+            <h3 class="font-bold text-base sm:text-lg text-amber-200">
+              O'g'il bola
+            </h3>
+            <p class="text-[11px] text-amber-100/60 mt-0.5">
+              Klassik kostyumda
+            </p>
+          </div>
+
+          <!-- Girl Option -->
+          <div
+            id="select-girl"
+            onclick="selectGender('girl')"
+            class="avatar-card cursor-pointer rounded-2xl p-4 sm:p-5 border-2 border-white/15 bg-white/5 flex flex-col items-center"
+          >
+            <div
+              class="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-tr from-rose-900/60 to-pink-500/30 border border-amber-300/40 flex items-center justify-center mb-3 shadow-inner"
+            >
+              <!-- Cute Girl SVG -->
+              <svg
+                class="w-14 h-14 sm:w-16 sm:h-16"
+                viewBox="0 0 64 64"
+                fill="none"
+              >
+                <path
+                  d="M16 24C16 12 48 12 48 24L50 38H14L16 24Z"
+                  fill="#451A03"
+                />
+                <circle cx="32" cy="23" r="11" fill="#FDE68A" />
+                <path d="M24 14L27 9L32 13L37 9L40 14H24Z" fill="#FBBF24" />
+                <path d="M18 56L24 35H40L46 56H18Z" fill="#F43F5E" />
+                <path d="M26 35H38L35 42H29L26 35Z" fill="#FDA4AF" />
+              </svg>
+            </div>
+            <h3 class="font-bold text-base sm:text-lg text-rose-200">
+              Qiz bola
+            </h3>
+            <p class="text-[11px] text-amber-100/60 mt-0.5">
+              Go'zal malika libosida
+            </p>
+          </div>
+        </div>
+
+        <button
+          id="btn-enter-museum"
+          class="w-full py-3.5 sm:py-4 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 active:scale-[0.99] text-white font-bold text-base sm:text-lg shadow-[0_10px_30px_rgba(225,29,72,0.5)] transition flex items-center justify-center gap-2"
+        >
+          <span>✨ Muzeyga kirish</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- LIGHTBOX MODAL: Photo Inspection (Kattalashtirish) -->
+    <div
+      id="modal-photo"
+      class="fixed inset-0 z-50 hidden items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-lg"
+    >
+      <div
+        class="glass-panel rounded-3xl max-w-3xl w-full p-4 sm:p-6 relative flex flex-col items-center border-2 border-amber-400/50 max-h-[92vh]"
+      >
+        <!-- Close Button -->
+        <button
+          id="btn-close-photo"
+          class="absolute top-3 right-3 sm:top-4 sm:right-4 w-10 h-10 rounded-full bg-rose-950/90 hover:bg-rose-700 text-amber-200 border border-amber-400/40 flex items-center justify-center text-lg font-bold z-10 transition"
+        >
+          ✕
+        </button>
+
+        <div class="text-center mb-3">
+          <span
+            id="lightbox-badge"
+            class="text-[11px] uppercase tracking-widest px-3 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30"
+          >
+            Xotira #1
+          </span>
+          <h3
+            id="lightbox-title"
+            class="font-serif-romantic text-2xl sm:text-3xl font-bold text-amber-200 mt-1"
+          >
+            Bizning Ilk Uchrashuv
+          </h3>
+        </div>
+
+        <!-- Framed High-Res Image Container -->
+        <div
+          class="relative w-full flex-1 min-h-0 flex items-center justify-center my-1 overflow-hidden"
+        >
+          <div
+            class="p-2 sm:p-3 rounded-2xl bg-gradient-to-br from-amber-300 via-yellow-600 to-amber-800 shadow-2xl max-h-[58vh] flex items-center justify-center"
+          >
+            <img
+              id="lightbox-img"
+              src=""
+              alt="Esdalik surat"
+              class="max-h-[54vh] w-auto max-w-full object-contain rounded-lg bg-stone-900"
+            />
+          </div>
+        </div>
+
+        <p
+          id="lightbox-desc"
+          class="text-xs sm:text-sm text-rose-100/90 text-center italic max-w-xl mt-3 mb-4"
+        >
+          "Har bir lahza sen bilan go'zal va unutilmas..."
+        </p>
+
+        <!-- Navigation Only (No Upload Button) -->
+        <div
+          class="flex items-center justify-between w-full gap-4 border-t border-amber-400/20 pt-3"
+        >
+          <button
+            id="btn-prev-photo"
+            class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs sm:text-sm font-medium transition flex items-center gap-2"
+          >
+            <span>⬅️</span> Oldingi surat
+          </button>
+
+          <span
+            id="lightbox-section-tag"
+            class="text-xs text-amber-300/80 font-medium hidden sm:inline"
+          >
+            1-Bo'lim • Ilk Xotiralar
+          </span>
+
+          <button
+            id="btn-next-photo"
+            class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs sm:text-sm font-medium transition flex items-center gap-2"
+          >
+            Keyingi surat <span>➡️</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      /**************************************************************
+       * 1. PHOTO DATA & DEFAULT ROMANTIC CAPTIONS (foto1 - foto10)
+       **************************************************************/
+      const photoMetaData = [
+        // 1-BO'LIM: Ilk Xotiralar (foto1 - foto5)
+        {
+          id: 1,
+          section: "1-Bo'lim: Ilk Xotiralar",
+          file: "foto1.jpg",
+          title: "Foto 1 — Ilk Nigoh",
+          caption:
+            "Seni ilk bor ko'rgan kunim hayotimning eng yorqin sahifasi ochildi.",
+        },
+        {
+          id: 2,
+          section: "1-Bo'lim: Ilk Xotiralar",
+          file: "foto2.jpg",
+          title: "Foto 2 — Shirin Tabassum",
+          caption: "Sening tabassuming dunyodagi barcha g'amlarni unuttiradi.",
+        },
+        {
+          id: 3,
+          section: "1-Bo'lim: Ilk Xotiralar",
+          file: "foto3.jpg",
+          title: "Foto 3 — Baxtli Onlar",
+          caption:
+            "Sen bilan o'tgan har bir daqiqa men uchun bebaho xazinadir.",
+        },
+        {
+          id: 4,
+          section: "1-Bo'lim: Ilk Xotiralar",
+          file: "foto4.jpg",
+          title: "Foto 4 — Samimiy Muhabbat",
+          caption:
+            "Qalbimdagi eng go'zal tuyg'ular faqat senga tegishli, azizam.",
+        },
+        {
+          id: 5,
+          section: "1-Bo'lim: Ilk Xotiralar",
+          file: "foto5.jpg",
+          title: "Foto 5 — Unutilmas Sayr",
+          caption:
+            "Qo'llaringdan tutib dunyoning narigi chekkasiga ham borishga tayyorman.",
+        },
+
+        // 2-BO'LIM: Baxtli Onlar (foto6 - foto10)
+        {
+          id: 6,
+          section: "2-Bo'lim: Baxtli Onlar",
+          file: "foto6.jpg",
+          title: "Foto 6 — Quvonchli Kun",
+          caption: "Ko'zlaringdagi quvonch — mening eng katta baxtim.",
+        },
+        {
+          id: 7,
+          section: "2-Bo'lim: Baxtli Onlar",
+          file: "foto7.jpg",
+          title: "Foto 7 — Yulduzli Oqshom",
+          caption:
+            "Osmondagi yulduzlar ham sening go'zalliging oldida xira tortadi.",
+        },
+        {
+          id: 8,
+          section: "2-Bo'lim: Baxtli Onlar",
+          file: "foto8.jpg",
+          title: "Foto 8 — Yurakdagi Orzular",
+          caption:
+            "Barcha orzularim va kelajagimni faqat sen bilan tasavvur qilaman.",
+        },
+        {
+          id: 9,
+          section: "2-Bo'lim: Baxtli Onlar",
+          file: "foto9.jpg",
+          title: "Foto 9 — Mehribonim",
+          caption:
+            "Borliging uchun, hayotimga mazmun olib kirganing uchun rahmat.",
+        },
+        {
+          id: 10,
+          section: "2-Bo'lim: Baxtli Onlar",
+          file: "foto10.jpg",
+          title: "Foto 10 — Abadiy Sevgi",
+          caption:
+            "Sevgimiz xuddi shu muzeydagi san'at asarlari kabi abadiy yashasin!",
+        },
+      ];
+
+      // Holds current image source for each of the 10 slots
+      const currentPhotoSources = new Array(10).fill(null);
+      // Holds Three.js Mesh materials for the 10 paintings
+      const paintingMaterials = new Array(10).fill(null);
+      // Holds interactive painting meshes for Raycasting
+      const paintingMeshes = [];
+
+      let selectedGender = "boy";
+      let activeLightboxIndex = 0;
+      let nearbyFrameIndex = -1;
+
+      /**************************************************************
+       * 2. ROMANTIC PLACEHOLDER GENERATOR & LOCAL FILE LOADER
+       **************************************************************/
+      function createRomanticPlaceholderDataURL(index) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 800;
+        canvas.height = 600;
+        const ctx = canvas.getContext("2d");
+
+        const palettes = [
+          ["#4c0519", "#9f1239", "#fbbf24"],
+          ["#1e1b4b", "#4338ca", "#f472b6"],
+          ["#3b0764", "#7e22ce", "#fcd34d"],
+          ["#450a0a", "#b91c1c", "#fda4af"],
+          ["#064e3b", "#047857", "#fde68a"],
+          ["#31102F", "#831843", "#f9a8d4"],
+          ["#172554", "#1d4ed8", "#93c5fd"],
+          ["#4a044e", "#a21caf", "#f0abfc"],
+          ["#27272a", "#52525b", "#fbbf24"],
+          ["#500724", "#be123c", "#fde047"],
+        ];
+        const pal = palettes[index % palettes.length];
+
+        const grad = ctx.createLinearGradient(0, 0, 800, 600);
+        grad.addColorStop(0, pal[0]);
+        grad.addColorStop(0.6, pal[1]);
+        grad.addColorStop(1, pal[0]);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 800, 600);
+
+        ctx.save();
+        ctx.globalAlpha = 0.16;
+        ctx.fillStyle = pal[2];
+        ctx.beginPath();
+        ctx.arc(400, 250, 200, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(400, 250, 135, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.strokeStyle = "rgba(251, 191, 36, 0.65)";
+        ctx.lineWidth = 6;
+        ctx.strokeRect(32, 32, 736, 536);
+        ctx.strokeStyle = "rgba(251, 191, 36, 0.3)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(46, 46, 708, 508);
+
+        // Heart shape in center
+        ctx.save();
+        ctx.translate(400, 215);
+        ctx.scale(2.3, 2.3);
+        ctx.beginPath();
+        ctx.moveTo(0, 15);
+        ctx.bezierCurveTo(-25, -15, -55, 5, 0, 45);
+        ctx.bezierCurveTo(55, 5, 25, -15, 0, 15);
+        ctx.closePath();
+        ctx.fillStyle = pal[2];
+        ctx.shadowColor = pal[2];
+        ctx.shadowBlur = 20;
+        ctx.fill();
+        ctx.restore();
+
+        ctx.fillStyle = "#fffbeb";
+        ctx.font = 'bold 52px "Cormorant Garamond", Georgia, serif';
+        ctx.textAlign = "center";
+        ctx.fillText(photoMetaData[index].title, 400, 390);
+
+        ctx.fillStyle = "#fde68a";
+        ctx.font = 'italic 26px "Plus Jakarta Sans", sans-serif';
+        ctx.fillText(photoMetaData[index].section, 400, 445);
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.6)";
+        ctx.font = '20px "Plus Jakarta Sans", sans-serif';
+        ctx.fillText(`(${photoMetaData[index].file})`, 400, 500);
+
+        return canvas.toDataURL("image/jpeg", 0.9);
+      }
+
+      function createUniformCanvasTextureFromImage(img) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1024;
+        canvas.height = 768;
+        const ctx = canvas.getContext("2d");
+
+        ctx.fillStyle = "#180d14";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const targetRatio = canvas.width / canvas.height;
+        const imgRatio = img.width / img.height;
+        let drawW, drawH, offsetX, offsetY;
+
+        if (imgRatio > targetRatio) {
+          drawH = canvas.height;
+          drawW = img.width * (canvas.height / img.height);
+          offsetX = (canvas.width - drawW) / 2;
+          offsetY = 0;
+        } else {
+          drawW = canvas.width;
+          drawH = img.height * (canvas.width / img.width);
+          offsetX = 0;
+          offsetY = (canvas.height - drawH) / 2;
+        }
+
+        ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.anisotropy = 4;
+        texture.needsUpdate = true;
+        return texture;
+      }
+
+      function applyPhotoToSlot(index, srcUrl) {
+        currentPhotoSources[index] = srcUrl;
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          if (paintingMaterials[index]) {
+            const newTex = createUniformCanvasTextureFromImage(img);
+            if (paintingMaterials[index].map)
+              paintingMaterials[index].map.dispose();
+            paintingMaterials[index].map = newTex;
+            paintingMaterials[index].needsUpdate = true;
+          }
+        };
+        img.src = srcUrl;
+      }
+
+      // Automatically loads foto1.jpg..foto10.jpg from project folder
+      function initLoadAllPhotos() {
+        for (let i = 0; i < 10; i++) {
+          const placeholderUrl = createRomanticPlaceholderDataURL(i);
+          currentPhotoSources[i] = placeholderUrl;
+
+          const localCandidates = [
+            `foto${i + 1}.jpg`,
+            `foto${i + 1}.jpeg`,
+            `foto${i + 1}.png`,
+          ];
+          tryLoadCandidateList(i, localCandidates, 0);
+        }
+      }
+
+      function tryLoadCandidateList(slotIndex, candidates, candidateIdx) {
+        if (candidateIdx >= candidates.length) return;
+        const testImg = new Image();
+        testImg.onload = () => {
+          applyPhotoToSlot(slotIndex, candidates[candidateIdx]);
+        };
+        testImg.onerror = () => {
+          tryLoadCandidateList(slotIndex, candidates, candidateIdx + 1);
+        };
+        testImg.src = candidates[candidateIdx];
+      }
+
+      /**************************************************************
+       * 3. THREE.JS 2-SECTION MUSEUM ARCHITECTURE & OBSTACLE COLLIDERS
+       **************************************************************/
+      let scene, camera, renderer;
+      let playerGroup, leftLeg, rightLeg, leftArm, rightArm;
+      let floatingParticles, rotatingHeartMesh;
+      const clock = new THREE.Clock();
+
+      // Museum Dimensions:
+      // X from -16 to +16 (32m wide)
+      // Z from -28 to +28 (56m long total)
+      // Partition Wall at Z = 0 separating:
+      //   Section 1 (1-Bo'lim): Z from +28 down to 0
+      //   Section 2 (2-Bo'lim): Z from 0 down to -28
+      const HALL_HALF_W = 16.0;
+      const HALL_HALF_L = 28.0;
+      const HALL_HEIGHT = 10.5;
+      const PLAYER_RADIUS = 0.65;
+
+      // Solid Colliders Registry (Circles & Axis-Aligned Boxes)
+      const circleColliders = []; // { x, z, r }
+      const boxColliders = []; // { minX, maxX, minZ, maxZ }
+
+      // Movement & Camera controls state
+      const moveState = { forward: 0, turn: 0 };
+      const keysPressed = {};
+      let playerAngle = 0; // Facing -Z (towards the archway)
+
+      function initThreeMuseum() {
+        const container = document.getElementById("canvas-container");
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x160b12);
+        scene.fog = new THREE.FogExp2(0x160b12, 0.012);
+
+        camera = new THREE.PerspectiveCamera(
+          55,
+          window.innerWidth / window.innerHeight,
+          0.1,
+          130,
+        );
+
+        renderer = new THREE.WebGLRenderer({
+          antialias: true,
+          powerPreference: "high-performance",
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        container.appendChild(renderer.domElement);
+
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffe4e6, 0.72);
+        scene.add(ambientLight);
+
+        const hemiLight = new THREE.HemisphereLight(0xfffbeb, 0x3b0764, 0.45);
+        hemiLight.position.set(0, HALL_HEIGHT, 0);
+        scene.add(hemiLight);
+
+        // 4 Grand Chandeliers across the 2 Halls
+        const chandelierZ = [19, 9, -9, -19];
+        chandelierZ.forEach((zPos) => {
+          const pLight = new THREE.PointLight(0xfbbf24, 0.85, 30, 1.5);
+          pLight.position.set(0, HALL_HEIGHT - 2.2, zPos);
+          pLight.castShadow = true;
+          scene.add(pLight);
+        });
+
+        buildMuseumArchitecture();
+        buildPartitionWallWithArchway();
+        buildTenUniformFrames();
+        buildTablesBenchesAndSculptures();
+        buildFloatingParticles();
+        buildPlayerAvatar(selectedGender);
+
+        window.addEventListener("resize", onWindowResize);
+        setupInputHandlers();
+
+        animate();
+      }
+
+      function createMarbleFloorTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext("2d");
+
+        ctx.fillStyle = "#fdf8f6";
+        ctx.fillRect(0, 0, 512, 512);
+
+        ctx.strokeStyle = "rgba(214, 195, 185, 0.35)";
+        ctx.lineWidth = 3;
+        for (let i = 0; i < 18; i++) {
+          ctx.beginPath();
+          ctx.moveTo(Math.random() * 512, 0);
+          ctx.bezierCurveTo(
+            Math.random() * 512,
+            170,
+            Math.random() * 512,
+            340,
+            Math.random() * 512,
+            512,
+          );
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = "rgba(217, 119, 6, 0.45)";
+        ctx.lineWidth = 6;
+        ctx.strokeRect(4, 4, 504, 504);
+
+        ctx.strokeStyle = "rgba(225, 29, 72, 0.18)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(256, 36);
+        ctx.lineTo(476, 256);
+        ctx.lineTo(256, 476);
+        ctx.lineTo(36, 256);
+        ctx.closePath();
+        ctx.stroke();
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(8, 14);
+        return tex;
+      }
+
+      function createWallTexture() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 256;
+        canvas.height = 256;
+        const ctx = canvas.getContext("2d");
+
+        const grad = ctx.createLinearGradient(0, 0, 0, 256);
+        grad.addColorStop(0, "#3b0a1e");
+        grad.addColorStop(0.82, "#280614");
+        grad.addColorStop(0.83, "#b45309");
+        grad.addColorStop(0.85, "#1a040d");
+        grad.addColorStop(1, "#120208");
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 256, 256);
+
+        const tex = new THREE.CanvasTexture(canvas);
+        tex.wrapS = THREE.RepeatWrapping;
+        tex.wrapT = THREE.ClampToEdgeWrapping;
+        tex.repeat.set(14, 1);
+        return tex;
+      }
+
+      function createBannerMesh(text, width, height) {
+        const bannerCanvas = document.createElement("canvas");
+        bannerCanvas.width = 1024;
+        bannerCanvas.height = 180;
+        const bCtx = bannerCanvas.getContext("2d");
+        bCtx.fillStyle = "#2d0616";
+        bCtx.fillRect(0, 0, 1024, 180);
+        bCtx.strokeStyle = "#fbbf24";
+        bCtx.lineWidth = 8;
+        bCtx.strokeRect(10, 10, 1004, 160);
+        bCtx.fillStyle = "#fde68a";
+        bCtx.font = 'bold 54px "Cormorant Garamond", serif';
+        bCtx.textAlign = "center";
+        bCtx.fillText(text, 512, 110);
+
+        const bannerTex = new THREE.CanvasTexture(bannerCanvas);
+        return new THREE.Mesh(
+          new THREE.PlaneGeometry(width, height),
+          new THREE.MeshBasicMaterial({ map: bannerTex }),
+        );
+      }
+
+      function buildMuseumArchitecture() {
+        // 1. Polished Marble Floor
+        const floorGeo = new THREE.PlaneGeometry(
+          HALL_HALF_W * 2,
+          HALL_HALF_L * 2,
+        );
+        const floorMat = new THREE.MeshStandardMaterial({
+          map: createMarbleFloorTexture(),
+          roughness: 0.2,
+          metalness: 0.1,
+        });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // Red Velvet Carpet Runner going through both sections
+        const carpetGeo = new THREE.PlaneGeometry(4.4, HALL_HALF_L * 1.85);
+        const carpetMat = new THREE.MeshStandardMaterial({
+          color: 0x881337,
+          roughness: 0.85,
+        });
+        const carpet = new THREE.Mesh(carpetGeo, carpetMat);
+        carpet.rotation.x = -Math.PI / 2;
+        carpet.position.y = 0.015;
+        carpet.receiveShadow = true;
+        scene.add(carpet);
+
+        const trimGeo = new THREE.PlaneGeometry(4.65, HALL_HALF_L * 1.86);
+        const trimMat = new THREE.MeshStandardMaterial({
+          color: 0xfbbf24,
+          metalness: 0.7,
+          roughness: 0.3,
+        });
+        const carpetTrim = new THREE.Mesh(trimGeo, trimMat);
+        carpetTrim.rotation.x = -Math.PI / 2;
+        carpetTrim.position.y = 0.01;
+        scene.add(carpetTrim);
+
+        // 2. Outer Walls
+        const wallMat = new THREE.MeshStandardMaterial({
+          map: createWallTexture(),
+          roughness: 0.65,
+          metalness: 0.05,
+        });
+
+        // North Wall (-Z, Back of Section 2)
+        const northWall = new THREE.Mesh(
+          new THREE.PlaneGeometry(HALL_HALF_W * 2, HALL_HEIGHT),
+          wallMat,
+        );
+        northWall.position.set(0, HALL_HEIGHT / 2, -HALL_HALF_L);
+        scene.add(northWall);
+
+        // South Wall (+Z, Entrance of Section 1)
+        const southWall = new THREE.Mesh(
+          new THREE.PlaneGeometry(HALL_HALF_W * 2, HALL_HEIGHT),
+          wallMat,
+        );
+        southWall.position.set(0, HALL_HEIGHT / 2, HALL_HALF_L);
+        southWall.rotation.y = Math.PI;
+        scene.add(southWall);
+
+        // West Wall (-X)
+        const westWall = new THREE.Mesh(
+          new THREE.PlaneGeometry(HALL_HALF_L * 2, HALL_HEIGHT),
+          wallMat,
+        );
+        westWall.position.set(-HALL_HALF_W, HALL_HEIGHT / 2, 0);
+        westWall.rotation.y = Math.PI / 2;
+        scene.add(westWall);
+
+        // East Wall (+X)
+        const eastWall = new THREE.Mesh(
+          new THREE.PlaneGeometry(HALL_HALF_L * 2, HALL_HEIGHT),
+          wallMat,
+        );
+        eastWall.position.set(HALL_HALF_W, HALL_HEIGHT / 2, 0);
+        eastWall.rotation.y = -Math.PI / 2;
+        scene.add(eastWall);
+
+        // 3. Ceiling & Skylights
+        const ceilMat = new THREE.MeshStandardMaterial({
+          color: 0x1f0913,
+          roughness: 0.7,
+        });
+        const ceil = new THREE.Mesh(
+          new THREE.PlaneGeometry(HALL_HALF_W * 2, HALL_HALF_L * 2),
+          ceilMat,
+        );
+        ceil.rotation.x = Math.PI / 2;
+        ceil.position.y = HALL_HEIGHT;
+        scene.add(ceil);
+
+        [14, -14].forEach((zSky) => {
+          const skyGeo = new THREE.PlaneGeometry(10, 18);
+          const skyMat = new THREE.MeshBasicMaterial({ color: 0xfff1f2 });
+          const skylight = new THREE.Mesh(skyGeo, skyMat);
+          skylight.rotation.x = Math.PI / 2;
+          skylight.position.set(0, HALL_HEIGHT - 0.05, zSky);
+          scene.add(skylight);
+        });
+
+        // 4. Classical Columns along Side Walls (with solid collision!)
+        const colMat = new THREE.MeshStandardMaterial({
+          color: 0xfef3c7,
+          roughness: 0.35,
+          metalness: 0.1,
+        });
+        const goldCapMat = new THREE.MeshStandardMaterial({
+          color: 0xf59e0b,
+          roughness: 0.25,
+          metalness: 0.8,
+        });
+
+        const zPillars = [-26, -14, 14, 26];
+        zPillars.forEach((z) => {
+          [-HALL_HALF_W + 0.55, HALL_HALF_W - 0.55].forEach((x) => {
+            createColumn(x, z, colMat, goldCapMat);
+            circleColliders.push({ x, z, r: 0.65 });
+          });
+        });
+
+        // 5. Four Grand Chandeliers
+        [19, 9, -9, -19].forEach((zPos) => {
+          const chandGroup = new THREE.Group();
+          chandGroup.position.set(0, HALL_HEIGHT - 1.5, zPos);
+
+          const rod = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.06, 0.06, 1.6),
+            goldCapMat,
+          );
+          rod.position.y = 0.8;
+          chandGroup.add(rod);
+
+          const ring1 = new THREE.Mesh(
+            new THREE.TorusGeometry(1.5, 0.08, 12, 32),
+            goldCapMat,
+          );
+          ring1.rotation.x = Math.PI / 2;
+          chandGroup.add(ring1);
+
+          const ring2 = new THREE.Mesh(
+            new THREE.TorusGeometry(0.85, 0.06, 12, 24),
+            goldCapMat,
+          );
+          ring2.rotation.x = Math.PI / 2;
+          ring2.position.y = -0.4;
+          chandGroup.add(ring2);
+
+          const glowBulbMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+          for (let a = 0; a < 8; a++) {
+            const ang = (a / 8) * Math.PI * 2;
+            const bulb = new THREE.Mesh(
+              new THREE.SphereGeometry(0.13, 12, 12),
+              glowBulbMat,
+            );
+            bulb.position.set(Math.cos(ang) * 1.5, 0.12, Math.sin(ang) * 1.5);
+            chandGroup.add(bulb);
+          }
+          scene.add(chandGroup);
+        });
+
+        // Grand Banner on North Wall (End of Section 2)
+        const northBanner = createBannerMesh(
+          "✨ 2-BO'LIM: BAXTLI ONLAR (FOTO 6 – 10) ✨",
+          11.5,
+          1.9,
+        );
+        northBanner.position.set(0, 8.3, -HALL_HALF_L + 0.08);
+        scene.add(northBanner);
+
+        // Grand Banner on South Wall (Entrance of Section 1)
+        const southBanner = createBannerMesh(
+          "💖 1-BO'LIM: ILK XOTIRALAR (FOTO 1 – 5) 💖",
+          11.5,
+          1.9,
+        );
+        southBanner.position.set(0, 8.3, HALL_HALF_L - 0.08);
+        southBanner.rotation.y = Math.PI;
+        scene.add(southBanner);
+      }
+
+      // Partition Wall at Z = 0 dividing Section 1 and Section 2 with a 5.2m wide Central Archway
+      function buildPartitionWallWithArchway() {
+        const wallMat = new THREE.MeshStandardMaterial({
+          map: createWallTexture(),
+          roughness: 0.6,
+          metalness: 0.05,
+        });
+        const goldMat = new THREE.MeshStandardMaterial({
+          color: 0xf59e0b,
+          roughness: 0.25,
+          metalness: 0.8,
+        });
+        const marbleMat = new THREE.MeshStandardMaterial({
+          color: 0xfef3c7,
+          roughness: 0.3,
+        });
+
+        // Left Wing of Partition Wall: X from -16 to -2.6 (width 13.4m, thickness 0.7m)
+        const leftWing = new THREE.Mesh(
+          new THREE.BoxGeometry(13.4, HALL_HEIGHT, 0.7),
+          wallMat,
+        );
+        leftWing.position.set(-9.3, HALL_HEIGHT / 2, 0);
+        leftWing.castShadow = true;
+        leftWing.receiveShadow = true;
+        scene.add(leftWing);
+        boxColliders.push({
+          minX: -16.0,
+          maxX: -2.55,
+          minZ: -0.45,
+          maxZ: 0.45,
+        });
+
+        // Right Wing of Partition Wall: X from +2.6 to +16 (width 13.4m, thickness 0.7m)
+        const rightWing = new THREE.Mesh(
+          new THREE.BoxGeometry(13.4, HALL_HEIGHT, 0.7),
+          wallMat,
+        );
+        rightWing.position.set(9.3, HALL_HEIGHT / 2, 0);
+        rightWing.castShadow = true;
+        rightWing.receiveShadow = true;
+        scene.add(rightWing);
+        boxColliders.push({ minX: 2.55, maxX: 16.0, minZ: -0.45, maxZ: 0.45 });
+
+        // Top Header Wall above Archway: X from -2.6 to +2.6, Y from 6.5 to 10.5
+        const topHeader = new THREE.Mesh(
+          new THREE.BoxGeometry(5.2, 4.0, 0.75),
+          wallMat,
+        );
+        topHeader.position.set(0, 8.5, 0);
+        scene.add(topHeader);
+
+        // Ornate Marble & Gold Pillars framing the Archway at X = -2.6 and X = +2.6
+        [-2.6, 2.6].forEach((xArch) => {
+          const archPillar = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.45, 0.5, 6.5, 20),
+            marbleMat,
+          );
+          archPillar.position.set(xArch, 3.25, 0);
+          archPillar.castShadow = true;
+          scene.add(archPillar);
+
+          const base = new THREE.Mesh(
+            new THREE.BoxGeometry(1.1, 0.5, 1.1),
+            goldMat,
+          );
+          base.position.set(xArch, 0.25, 0);
+          scene.add(base);
+
+          const cap = new THREE.Mesh(
+            new THREE.BoxGeometry(1.15, 0.5, 1.15),
+            goldMat,
+          );
+          cap.position.set(xArch, 6.45, 0);
+          scene.add(cap);
+
+          circleColliders.push({ x: xArch, z: 0, r: 0.55 });
+        });
+
+        // Golden Arch Molding Beam across the doorway
+        const archBeam = new THREE.Mesh(
+          new THREE.BoxGeometry(6.2, 0.45, 0.95),
+          goldMat,
+        );
+        archBeam.position.set(0, 6.5, 0);
+        scene.add(archBeam);
+
+        // Sign on Section 1 side (+Z) pointing to Section 2
+        const signToSec2 = createBannerMesh(
+          "⬆️ 2-BO'LIM: BAXTLI ONLAR (FOTO 6 – 10) ⬆️",
+          7.2,
+          1.25,
+        );
+        signToSec2.position.set(0, 7.8, 0.42);
+        scene.add(signToSec2);
+
+        // Sign on Section 2 side (-Z) pointing back to Section 1
+        const signToSec1 = createBannerMesh(
+          "⬆️ 1-BO'LIM: ILK XOTIRALAR (FOTO 1 – 5) ⬆️",
+          7.2,
+          1.25,
+        );
+        signToSec1.position.set(0, 7.8, -0.42);
+        signToSec1.rotation.y = Math.PI;
+        scene.add(signToSec1);
+      }
+
+      function createColumn(x, z, colMat, goldMat) {
+        const group = new THREE.Group();
+        group.position.set(x, 0, z);
+
+        const shaft = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.42, 0.48, HALL_HEIGHT - 1.2, 16),
+          colMat,
+        );
+        shaft.position.y = HALL_HEIGHT / 2;
+        shaft.castShadow = true;
+        group.add(shaft);
+
+        const base = new THREE.Mesh(
+          new THREE.BoxGeometry(1.15, 0.6, 1.15),
+          goldMat,
+        );
+        base.position.y = 0.3;
+        group.add(base);
+
+        const capital = new THREE.Mesh(
+          new THREE.BoxGeometry(1.2, 0.6, 1.2),
+          goldMat,
+        );
+        capital.position.y = HALL_HEIGHT - 0.3;
+        group.add(capital);
+
+        scene.add(group);
+      }
+
+      /**************************************************************
+       * 4. TEN UNIFORM ORNATE PICTURE FRAMES ACROSS 2 SECTIONS
+       **************************************************************/
+      // Section 1 (Z > 0): foto1 to foto5 (5 frames)
+      // Section 2 (Z < 0): foto6 to foto10 (5 frames)
+      const framePlacements = [
+        // === 1-BO'LIM (Section 1: foto1 - foto5) ===
+        // Left Wall (West): foto1 & foto2
+        { x: -HALL_HALF_W + 0.12, z: 20, rotY: Math.PI / 2 },
+        { x: -HALL_HALF_W + 0.12, z: 8, rotY: Math.PI / 2 },
+        // Partition Wall Left Wing (facing Section 1, +Z): foto3
+        { x: -9.3, z: 0.42, rotY: 0 },
+        // Right Wall (East): foto4 & foto5
+        { x: HALL_HALF_W - 0.12, z: 8, rotY: -Math.PI / 2 },
+        { x: HALL_HALF_W - 0.12, z: 20, rotY: -Math.PI / 2 },
+
+        // === 2-BO'LIM (Section 2: foto6 - foto10) ===
+        // Left Wall (West): foto6 & foto7
+        { x: -HALL_HALF_W + 0.12, z: -8, rotY: Math.PI / 2 },
+        { x: -HALL_HALF_W + 0.12, z: -20, rotY: Math.PI / 2 },
+        // Front North Wall (Center): foto8
+        { x: 0, z: -HALL_HALF_L + 0.12, rotY: 0 },
+        // Right Wall (East): foto9 & foto10
+        { x: HALL_HALF_W - 0.12, z: -20, rotY: -Math.PI / 2 },
+        { x: HALL_HALF_W - 0.12, z: -8, rotY: -Math.PI / 2 },
+      ];
+
+      const FRAME_W = 4.4;
+      const FRAME_H = 3.3;
+      const FRAME_Y = 3.8;
+
+      function buildTenUniformFrames() {
+        const outerGoldMat = new THREE.MeshStandardMaterial({
+          color: 0xf59e0b,
+          metalness: 0.78,
+          roughness: 0.24,
+        });
+        const innerVelvetMat = new THREE.MeshStandardMaterial({
+          color: 0xfffbeb,
+          roughness: 0.6,
+        });
+
+        framePlacements.forEach((placement, index) => {
+          const frameGroup = new THREE.Group();
+          frameGroup.position.set(placement.x, FRAME_Y, placement.z);
+          frameGroup.rotation.y = placement.rotY;
+
+          const outerBox = new THREE.Mesh(
+            new THREE.BoxGeometry(FRAME_W + 0.45, FRAME_H + 0.45, 0.18),
+            outerGoldMat,
+          );
+          outerBox.castShadow = true;
+          frameGroup.add(outerBox);
+
+          const matBox = new THREE.Mesh(
+            new THREE.BoxGeometry(FRAME_W + 0.12, FRAME_H + 0.12, 0.21),
+            innerVelvetMat,
+          );
+          frameGroup.add(matBox);
+
+          const initialTex = new THREE.TextureLoader().load(
+            currentPhotoSources[index],
+          );
+          const paintMat = new THREE.MeshBasicMaterial({ map: initialTex });
+          paintingMaterials[index] = paintMat;
+
+          const paintingMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(FRAME_W, FRAME_H),
+            paintMat,
+          );
+          paintingMesh.position.z = 0.12;
+          paintingMesh.userData = { photoIndex: index };
+          frameGroup.add(paintingMesh);
+          paintingMeshes.push(paintingMesh);
+
+          // Lamp Fixture
+          const lampArm = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.04, 0.04, 0.7),
+            outerGoldMat,
+          );
+          lampArm.rotation.x = Math.PI / 2;
+          lampArm.position.set(0, FRAME_H / 2 + 0.45, 0.35);
+          frameGroup.add(lampArm);
+
+          const lampHead = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.12, 0.18, 0.6, 12),
+            outerGoldMat,
+          );
+          lampHead.rotation.z = Math.PI / 2;
+          lampHead.position.set(0, FRAME_H / 2 + 0.4, 0.7);
+          frameGroup.add(lampHead);
+
+          // Plaque underneath
+          const plaqueCanvas = document.createElement("canvas");
+          plaqueCanvas.width = 512;
+          plaqueCanvas.height = 110;
+          const pCtx = plaqueCanvas.getContext("2d");
+          pCtx.fillStyle = "#290916";
+          pCtx.fillRect(0, 0, 512, 110);
+          pCtx.strokeStyle = "#fbbf24";
+          pCtx.lineWidth = 6;
+          pCtx.strokeRect(6, 6, 500, 98);
+          pCtx.fillStyle = "#fde68a";
+          pCtx.font = 'bold 34px "Cormorant Garamond", serif';
+          pCtx.textAlign = "center";
+          pCtx.fillText(photoMetaData[index].title, 256, 66);
+
+          const plaqueMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.9, 0.42),
+            new THREE.MeshBasicMaterial({
+              map: new THREE.CanvasTexture(plaqueCanvas),
+            }),
+          );
+          plaqueMesh.position.set(0, -FRAME_H / 2 - 0.55, 0.05);
+          frameGroup.add(plaqueMesh);
+
+          scene.add(frameGroup);
+        });
+      }
+
+      /**************************************************************
+       * 5. DECORATIVE TABLES, FLOWER VASES, BENCHES & HEART SCULPTURE
+       *    (All registered with solid collision!)
+       **************************************************************/
+      function createOrnateFlowerTable(x, z) {
+        const tableGroup = new THREE.Group();
+        tableGroup.position.set(x, 0, z);
+
+        const marbleMat = new THREE.MeshStandardMaterial({
+          color: 0xfff1f2,
+          roughness: 0.2,
+        });
+        const goldMat = new THREE.MeshStandardMaterial({
+          color: 0xfbbf24,
+          metalness: 0.8,
+          roughness: 0.25,
+        });
+        const vaseMat = new THREE.MeshStandardMaterial({
+          color: 0xbe123c,
+          metalness: 0.3,
+          roughness: 0.2,
+        });
+        const roseMat = new THREE.MeshStandardMaterial({
+          color: 0xf43f5e,
+          emissive: 0x881337,
+          emissiveIntensity: 0.25,
+        });
+        const leafMat = new THREE.MeshStandardMaterial({
+          color: 0x15803d,
+          roughness: 0.6,
+        });
+
+        // Base plate
+        const base = new THREE.Mesh(
+          new THREE.CylinderGeometry(1.1, 1.25, 0.18, 24),
+          goldMat,
+        );
+        base.position.y = 0.09;
+        tableGroup.add(base);
+
+        // Central Pillar Leg
+        const pillar = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.32, 0.45, 1.0, 20),
+          marbleMat,
+        );
+        pillar.position.y = 0.6;
+        pillar.castShadow = true;
+        tableGroup.add(pillar);
+
+        // Round Marble Tabletop (Radius 1.55m)
+        const top = new THREE.Mesh(
+          new THREE.CylinderGeometry(1.55, 1.5, 0.14, 32),
+          marbleMat,
+        );
+        top.position.y = 1.15;
+        top.castShadow = true;
+        top.receiveShadow = true;
+        tableGroup.add(top);
+
+        // Gold Rim around tabletop
+        const rim = new THREE.Mesh(
+          new THREE.TorusGeometry(1.53, 0.05, 12, 36),
+          goldMat,
+        );
+        rim.rotation.x = Math.PI / 2;
+        rim.position.y = 1.15;
+        tableGroup.add(rim);
+
+        // Vase in center of table
+        const vase = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.24, 0.16, 0.55, 16),
+          vaseMat,
+        );
+        vase.position.y = 1.48;
+        vase.castShadow = true;
+        tableGroup.add(vase);
+
+        // Romantic Rose Bouquet inside Vase
+        const foliage = new THREE.Mesh(
+          new THREE.SphereGeometry(0.38, 12, 12),
+          leafMat,
+        );
+        foliage.position.y = 1.82;
+        foliage.scale.y = 0.65;
+        tableGroup.add(foliage);
+
+        const rosePositions = [
+          [0, 2.05, 0],
+          [0.22, 1.95, 0.15],
+          [-0.22, 1.95, 0.15],
+          [0.18, 1.95, -0.2],
+          [-0.18, 1.95, -0.2],
+          [0, 1.92, 0.28],
+          [0, 1.92, -0.28],
+        ];
+        rosePositions.forEach(([rx, ry, rz]) => {
+          const rose = new THREE.Mesh(
+            new THREE.SphereGeometry(0.13, 10, 10),
+            roseMat,
+          );
+          rose.position.set(rx, ry, rz);
+          tableGroup.add(rose);
+        });
+
+        scene.add(tableGroup);
+
+        // Register solid circle collider for this table so player cannot walk through it!
+        circleColliders.push({ x, z, r: 1.65 });
+      }
+
+      function createVelvetBench(x, z) {
+        const goldMat = new THREE.MeshStandardMaterial({
+          color: 0xfbbf24,
+          metalness: 0.8,
+          roughness: 0.2,
+        });
+        const bench = new THREE.Group();
+        bench.position.set(x, 0, z);
+
+        const seat = new THREE.Mesh(
+          new THREE.BoxGeometry(3.2, 0.26, 1.2),
+          new THREE.MeshStandardMaterial({ color: 0x9f1239, roughness: 0.7 }),
+        );
+        seat.position.y = 0.62;
+        seat.castShadow = true;
+        bench.add(seat);
+
+        const trim = new THREE.Mesh(
+          new THREE.BoxGeometry(3.28, 0.08, 1.28),
+          goldMat,
+        );
+        trim.position.y = 0.52;
+        bench.add(trim);
+
+        [-1.25, 1.25].forEach((xLeg) => {
+          const leg = new THREE.Mesh(
+            new THREE.BoxGeometry(0.24, 0.55, 1.0),
+            goldMat,
+          );
+          leg.position.set(xLeg, 0.275, 0);
+          bench.add(leg);
+        });
+
+        scene.add(bench);
+
+        // Register solid box collider for the bench!
+        boxColliders.push({
+          minX: x - 1.68,
+          maxX: x + 1.68,
+          minZ: z - 0.68,
+          maxZ: z + 0.68,
+        });
+      }
+
+      function buildTablesBenchesAndSculptures() {
+        // === SECTION 1 (1-Bo'lim) Center & Side Tables + Benches ===
+        // Centerpiece Ornate Flower Table at (0, 14)
+        createOrnateFlowerTable(0, 14);
+        // Two flanking flower tables in Section 1
+        createOrnateFlowerTable(-7.5, 14);
+        createOrnateFlowerTable(7.5, 14);
+
+        // Velvet Benches in Section 1
+        createVelvetBench(0, 21);
+        createVelvetBench(0, 7);
+
+        // === SECTION 2 (2-Bo'lim) Grand Heart Sculpture Pedestal + Tables + Benches ===
+        const centerGroup = new THREE.Group();
+        centerGroup.position.set(0, 0, -14);
+
+        const marbleMat = new THREE.MeshStandardMaterial({
+          color: 0xfff1f2,
+          roughness: 0.25,
+        });
+        const goldMat = new THREE.MeshStandardMaterial({
+          color: 0xfbbf24,
+          metalness: 0.8,
+          roughness: 0.2,
+        });
+        const heartMat = new THREE.MeshStandardMaterial({
+          color: 0xe11d48,
+          emissive: 0x881337,
+          emissiveIntensity: 0.45,
+          metalness: 0.4,
+          roughness: 0.2,
+        });
+
+        const step1 = new THREE.Mesh(
+          new THREE.CylinderGeometry(2.3, 2.5, 0.35, 32),
+          marbleMat,
+        );
+        step1.position.y = 0.175;
+        centerGroup.add(step1);
+
+        const step2 = new THREE.Mesh(
+          new THREE.CylinderGeometry(1.6, 1.8, 0.9, 32),
+          marbleMat,
+        );
+        step2.position.y = 0.8;
+        centerGroup.add(step2);
+
+        const goldRing = new THREE.Mesh(
+          new THREE.TorusGeometry(1.7, 0.08, 16, 40),
+          goldMat,
+        );
+        goldRing.rotation.x = Math.PI / 2;
+        goldRing.position.y = 1.25;
+        centerGroup.add(goldRing);
+
+        const heartShape = new THREE.Shape();
+        const hx = 0,
+          hy = 0;
+        heartShape.moveTo(hx, hy + 0.4);
+        heartShape.bezierCurveTo(
+          hx,
+          hy + 0.4,
+          hx - 0.35,
+          hy + 1.1,
+          hx - 0.95,
+          hy + 1.1,
+        );
+        heartShape.bezierCurveTo(
+          hx - 1.65,
+          hy + 1.1,
+          hx - 1.65,
+          hy + 0.2,
+          hx - 1.65,
+          hy + 0.2,
+        );
+        heartShape.bezierCurveTo(
+          hx - 1.65,
+          hy - 0.5,
+          hx - 0.95,
+          hy - 1.15,
+          hx,
+          hy - 1.7,
+        );
+        heartShape.bezierCurveTo(
+          hx + 0.95,
+          hy - 1.15,
+          hx + 1.65,
+          hy - 0.5,
+          hx + 1.65,
+          hy + 0.2,
+        );
+        heartShape.bezierCurveTo(
+          hx + 1.65,
+          hy + 0.2,
+          hx + 1.65,
+          hy + 1.1,
+          hx + 0.95,
+          hy + 1.1,
+        );
+        heartShape.bezierCurveTo(
+          hx + 0.35,
+          hy + 1.1,
+          hx,
+          hy + 0.4,
+          hx,
+          hy + 0.4,
+        );
+
+        const extrudeSettings = {
+          depth: 0.45,
+          bevelEnabled: true,
+          bevelSegments: 5,
+          steps: 1,
+          bevelSize: 0.12,
+          bevelThickness: 0.12,
+        };
+        const heartGeo = new THREE.ExtrudeGeometry(heartShape, extrudeSettings);
+        heartGeo.center();
+
+        rotatingHeartMesh = new THREE.Mesh(heartGeo, heartMat);
+        rotatingHeartMesh.position.y = 2.9;
+        rotatingHeartMesh.castShadow = true;
+        centerGroup.add(rotatingHeartMesh);
+
+        scene.add(centerGroup);
+        // Solid collider for the Heart Sculpture pedestal
+        circleColliders.push({ x: 0, z: -14, r: 2.55 });
+
+        // Two decorative flower tables in Section 2
+        createOrnateFlowerTable(-7.5, -14);
+        createOrnateFlowerTable(7.5, -14);
+
+        // Velvet Benches in Section 2
+        createVelvetBench(0, -7);
+        createVelvetBench(0, -21);
+      }
+
+      function buildFloatingParticles() {
+        const count = 220;
+        const geo = new THREE.BufferGeometry();
+        const positions = new Float32Array(count * 3);
+
+        for (let i = 0; i < count; i++) {
+          positions[i * 3] = (Math.random() - 0.5) * (HALL_HALF_W * 1.8);
+          positions[i * 3 + 1] = 0.6 + Math.random() * (HALL_HEIGHT - 1.5);
+          positions[i * 3 + 2] = (Math.random() - 0.5) * (HALL_HALF_L * 1.85);
+        }
+        geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+
+        const mat = new THREE.PointsMaterial({
+          color: 0xfde68a,
+          size: 0.12,
+          transparent: true,
+          opacity: 0.65,
+        });
+        floatingParticles = new THREE.Points(geo, mat);
+        scene.add(floatingParticles);
+      }
+
+      /**************************************************************
+       * 6. 3D PLAYER AVATAR BUILDER (O'g'il bola / Qiz bola)
+       **************************************************************/
+      function buildPlayerAvatar(gender) {
+        // Start in Section 1 near entrance (Z = 24.5) facing the central tables & archway
+        const prevPos = playerGroup
+          ? playerGroup.position.clone()
+          : new THREE.Vector3(0, 0, 24.5);
+        if (playerGroup) {
+          scene.remove(playerGroup);
+        }
+
+        playerGroup = new THREE.Group();
+        playerGroup.position.copy(prevPos);
+
+        const skinMat = new THREE.MeshStandardMaterial({
+          color: 0xfde68a,
+          roughness: 0.5,
+        });
+        const hairMat = new THREE.MeshStandardMaterial({
+          color: gender === "boy" ? 0x1c1917 : 0x3b1704,
+          roughness: 0.7,
+        });
+
+        // Head
+        const head = new THREE.Mesh(
+          new THREE.SphereGeometry(0.34, 20, 20),
+          skinMat,
+        );
+        head.position.y = 1.65;
+        head.castShadow = true;
+        playerGroup.add(head);
+
+        // Hair / Crown
+        if (gender === "boy") {
+          const hairCap = new THREE.Mesh(
+            new THREE.SphereGeometry(
+              0.36,
+              16,
+              16,
+              0,
+              Math.PI * 2,
+              0,
+              Math.PI * 0.55,
+            ),
+            hairMat,
+          );
+          hairCap.position.y = 1.68;
+          hairCap.rotation.x = -0.15;
+          playerGroup.add(hairCap);
+        } else {
+          const hairCap = new THREE.Mesh(
+            new THREE.SphereGeometry(
+              0.36,
+              16,
+              16,
+              0,
+              Math.PI * 2,
+              0,
+              Math.PI * 0.65,
+            ),
+            hairMat,
+          );
+          hairCap.position.y = 1.68;
+          playerGroup.add(hairCap);
+
+          // Long flowing hair at back
+          const longHair = new THREE.Mesh(
+            new THREE.BoxGeometry(0.55, 0.65, 0.25),
+            hairMat,
+          );
+          longHair.position.set(0, 1.45, 0.22);
+          playerGroup.add(longHair);
+
+          // Golden Tiara Crown
+          const crown = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.18, 0.16, 0.14, 12),
+            new THREE.MeshStandardMaterial({
+              color: 0xfbbf24,
+              metalness: 0.8,
+              roughness: 0.2,
+            }),
+          );
+          crown.position.set(0, 2.02, -0.05);
+          playerGroup.add(crown);
+        }
+
+        // Body / Outfit
+        if (gender === "boy") {
+          // Navy Suit Jacket
+          const torsoMat = new THREE.MeshStandardMaterial({
+            color: 0x1e293b,
+            roughness: 0.6,
+          });
+          const torso = new THREE.Mesh(
+            new THREE.BoxGeometry(0.62, 0.72, 0.34),
+            torsoMat,
+          );
+          torso.position.y = 1.02;
+          torso.castShadow = true;
+          playerGroup.add(torso);
+
+          // Red Tie
+          const tie = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 0.38, 0.04),
+            new THREE.MeshStandardMaterial({ color: 0xe11d48 }),
+          );
+          tie.position.set(0, 1.06, -0.18);
+          playerGroup.add(tie);
+        } else {
+          // Romantic Rose Gown
+          const dressTopMat = new THREE.MeshStandardMaterial({
+            color: 0xe11d48,
+            roughness: 0.5,
+          });
+          const skirtMat = new THREE.MeshStandardMaterial({
+            color: 0xf43f5e,
+            roughness: 0.55,
+          });
+
+          const bodice = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.22, 0.26, 0.42, 16),
+            dressTopMat,
+          );
+          bodice.position.y = 1.15;
+          bodice.castShadow = true;
+          playerGroup.add(bodice);
+
+          const skirt = new THREE.Mesh(
+            new THREE.ConeGeometry(0.56, 0.72, 20),
+            skirtMat,
+          );
+          skirt.position.y = 0.68;
+          skirt.castShadow = true;
+          playerGroup.add(skirt);
+        }
+
+        // Arms
+        const armMat = new THREE.MeshStandardMaterial({
+          color: gender === "boy" ? 0x1e293b : 0xfde68a,
+          roughness: 0.5,
+        });
+        leftArm = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.09, 0.08, 0.58, 12),
+          armMat,
+        );
+        leftArm.position.set(-0.4, 1.02, 0);
+        playerGroup.add(leftArm);
+
+        rightArm = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.09, 0.08, 0.58, 12),
+          armMat,
+        );
+        rightArm.position.set(0.4, 1.02, 0);
+        playerGroup.add(rightArm);
+
+        // Legs
+        const legMat = new THREE.MeshStandardMaterial({
+          color: gender === "boy" ? 0x0f172a : 0xfde68a,
+          roughness: 0.6,
+        });
+        leftLeg = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.11, 0.09, 0.65, 12),
+          legMat,
+        );
+        leftLeg.position.set(-0.16, 0.32, 0);
+        playerGroup.add(leftLeg);
+
+        rightLeg = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.11, 0.09, 0.65, 12),
+          legMat,
+        );
+        rightLeg.position.set(0.16, 0.32, 0);
+        playerGroup.add(rightLeg);
+
+        // Subtle glowing ring under player feet
+        const ringGeo = new THREE.RingGeometry(0.42, 0.52, 24);
+        const ringMat = new THREE.MeshBasicMaterial({
+          color: 0xfbbf24,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.55,
+        });
+        const footRing = new THREE.Mesh(ringGeo, ringMat);
+        footRing.rotation.x = Math.PI / 2;
+        footRing.position.y = 0.03;
+        playerGroup.add(footRing);
+
+        playerGroup.rotation.y = playerAngle;
+        scene.add(playerGroup);
+      }
+
+      /**************************************************************
+       * 7. JOYSTICK, KEYBOARD & RAYCASTER CLICK CONTROLS
+       **************************************************************/
+      function setupInputHandlers() {
+        // Keyboard Listeners
+        window.addEventListener("keydown", (e) => {
+          keysPressed[e.code] = true;
+          if (e.code === "Space" || e.code === "Enter") {
+            if (
+              nearbyFrameIndex !== -1 &&
+              document
+                .getElementById("modal-photo")
+                .classList.contains("hidden")
+            ) {
+              openPhotoLightbox(nearbyFrameIndex);
+            }
+          }
+          if (e.code === "Escape") {
+            closePhotoLightbox();
+          }
+        });
+        window.addEventListener("keyup", (e) => {
+          keysPressed[e.code] = false;
+        });
+
+        // Virtual Joystick Logic
+        const joyZone = document.getElementById("joystick-zone");
+        const joyKnob = document.getElementById("joystick-knob");
+        let joyActive = false;
+        let joyCenter = { x: 0, y: 0 };
+        const maxRadius = 42;
+
+        function startJoystick(clientX, clientY) {
+          joyActive = true;
+          const rect = joyZone.getBoundingClientRect();
+          joyCenter = {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2,
+          };
+          moveJoystick(clientX, clientY);
+        }
+
+        function moveJoystick(clientX, clientY) {
+          if (!joyActive) return;
+          let dx = clientX - joyCenter.x;
+          let dy = clientY - joyCenter.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > maxRadius) {
+            dx = (dx / dist) * maxRadius;
+            dy = (dy / dist) * maxRadius;
+          }
+          joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+
+          // Normalize -1 to 1
+          moveState.forward = -(dy / maxRadius);
+          moveState.turn = -(dx / maxRadius);
+        }
+
+        function endJoystick() {
+          joyActive = false;
+          joyKnob.style.transform = `translate(0px, 0px)`;
+          moveState.forward = 0;
+          moveState.turn = 0;
+        }
+
+        // Touch events on joystick
+        joyZone.addEventListener(
+          "touchstart",
+          (e) => {
+            e.stopPropagation();
+            const t = e.changedTouches[0];
+            startJoystick(t.clientX, t.clientY);
+          },
+          { passive: false },
+        );
+
+        joyZone.addEventListener(
+          "touchmove",
+          (e) => {
+            e.stopPropagation();
+            const t = e.changedTouches[0];
+            moveJoystick(t.clientX, t.clientY);
+          },
+          { passive: false },
+        );
+
+        joyZone.addEventListener("touchend", endJoystick);
+        joyZone.addEventListener("touchcancel", endJoystick);
+
+        // Mouse events on joystick
+        joyZone.addEventListener("mousedown", (e) => {
+          e.stopPropagation();
+          startJoystick(e.clientX, e.clientY);
+        });
+        window.addEventListener("mousemove", (e) => {
+          if (joyActive) moveJoystick(e.clientX, e.clientY);
+        });
+        window.addEventListener("mouseup", () => {
+          if (joyActive) endJoystick();
+        });
+
+        // Canvas Click / Tap Raycasting (to inspect framed photos directly OR drag camera)
+        const domElem = renderer.domElement;
+        let pointerDownPos = { x: 0, y: 0 };
+        let isDraggingScene = false;
+
+        domElem.addEventListener("pointerdown", (e) => {
+          pointerDownPos = { x: e.clientX, y: e.clientY };
+          isDraggingScene = true;
+        });
+
+        domElem.addEventListener("pointermove", (e) => {
+          if (!isDraggingScene) return;
+          const dx = e.clientX - pointerDownPos.x;
+          if (Math.abs(dx) > 6) {
+            playerAngle -= dx * 0.005;
+            pointerDownPos.x = e.clientX;
+          }
+        });
+
+        domElem.addEventListener("pointerup", (e) => {
+          isDraggingScene = false;
+          const distMoved = Math.hypot(
+            e.clientX - pointerDownPos.x,
+            e.clientY - pointerDownPos.y,
+          );
+          if (distMoved < 10) {
+            checkRaycasterPhotoClick(e.clientX, e.clientY);
+          }
+        });
+      }
+
+      const raycaster = new THREE.Raycaster();
+      const pointerNDC = new THREE.Vector2();
+
+      function checkRaycasterPhotoClick(clientX, clientY) {
+        pointerNDC.x = (clientX / window.innerWidth) * 2 - 1;
+        pointerNDC.y = -(clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(pointerNDC, camera);
+        const intersects = raycaster.intersectObjects(paintingMeshes, false);
+        if (intersects.length > 0) {
+          const clickedIndex = intersects[0].object.userData.photoIndex;
+          openPhotoLightbox(clickedIndex);
+        }
+      }
+
+      /**************************************************************
+       * 8. SOLID COLLISION RESOLUTION (Tables, Benches, Columns, Walls)
+       **************************************************************/
+      function resolvePlayerCollisions(x, z) {
+        // 1. Outer Museum Walls boundary
+        const wallMargin = 1.25;
+        x = Math.max(
+          -HALL_HALF_W + wallMargin,
+          Math.min(HALL_HALF_W - wallMargin, x),
+        );
+        z = Math.max(
+          -HALL_HALF_L + wallMargin,
+          Math.min(HALL_HALF_L - wallMargin, z),
+        );
+
+        // Run 3 iterations so corners & multi-object slides are completely smooth and solid
+        for (let iter = 0; iter < 3; iter++) {
+          // 2. Circle Colliders (Tables, Pedestals, Columns, Arch Pillars)
+          for (let i = 0; i < circleColliders.length; i++) {
+            const c = circleColliders[i];
+            const dx = x - c.x;
+            const dz = z - c.z;
+            const dist = Math.hypot(dx, dz);
+            const minDist = c.r + PLAYER_RADIUS;
+
+            if (dist < minDist) {
+              if (dist < 0.0001) {
+                x += minDist;
+              } else {
+                const overlap = minDist - dist;
+                x += (dx / dist) * overlap;
+                z += (dz / dist) * overlap;
+              }
+            }
+          }
+
+          // 3. Axis-Aligned Box Colliders (Partition Wall Wings & Velvet Benches)
+          for (let i = 0; i < boxColliders.length; i++) {
+            const b = boxColliders[i];
+            const closestX = Math.max(b.minX, Math.min(x, b.maxX));
+            const closestZ = Math.max(b.minZ, Math.min(z, b.maxZ));
+            const dx = x - closestX;
+            const dz = z - closestZ;
+            const distSq = dx * dx + dz * dz;
+
+            if (distSq < PLAYER_RADIUS * PLAYER_RADIUS) {
+              const dist = Math.sqrt(distSq);
+              if (dist > 0.0001) {
+                const overlap = PLAYER_RADIUS - dist;
+                x += (dx / dist) * overlap;
+                z += (dz / dist) * overlap;
+              } else {
+                // Inside box fallback: push out along shortest axis
+                const penLeft = Math.abs(x - b.minX);
+                const penRight = Math.abs(b.maxX - x);
+                const penTop = Math.abs(z - b.minZ);
+                const penBottom = Math.abs(b.maxZ - z);
+                const minPen = Math.min(penLeft, penRight, penTop, penBottom);
+                if (minPen === penLeft) x = b.minX - PLAYER_RADIUS;
+                else if (minPen === penRight) x = b.maxX + PLAYER_RADIUS;
+                else if (minPen === penTop) z = b.minZ - PLAYER_RADIUS;
+                else z = b.maxZ + PLAYER_RADIUS;
+              }
+            }
+          }
+        }
+
+        return { x, z };
+      }
+
+      /**************************************************************
+       * 9. MAIN ANIMATION LOOP & PROXIMITY DETECTION
+       **************************************************************/
+      function animate() {
+        requestAnimationFrame(animate);
+        const dt = Math.min(clock.getDelta(), 0.1);
+        const elapsed = clock.getElapsedTime();
+
+        let forwardInput = moveState.forward;
+        let turnInput = moveState.turn;
+
+        if (keysPressed["KeyW"] || keysPressed["ArrowUp"]) forwardInput = 1;
+        if (keysPressed["KeyS"] || keysPressed["ArrowDown"])
+          forwardInput = -0.8;
+        if (keysPressed["KeyA"] || keysPressed["ArrowLeft"]) turnInput = 1;
+        if (keysPressed["KeyD"] || keysPressed["ArrowRight"]) turnInput = -1;
+
+        if (playerGroup) {
+          const turnSpeed = 2.1;
+          const walkSpeed = 7.0;
+
+          playerAngle += turnInput * turnSpeed * dt;
+          playerGroup.rotation.y = playerAngle;
+
+          if (Math.abs(forwardInput) > 0.05) {
+            const moveX =
+              -Math.sin(playerAngle) * forwardInput * walkSpeed * dt;
+            const moveZ =
+              -Math.cos(playerAngle) * forwardInput * walkSpeed * dt;
+
+            const desiredX = playerGroup.position.x + moveX;
+            const desiredZ = playerGroup.position.z + moveZ;
+
+            // Apply solid collision against tables, benches, pillars, and partition wall
+            const resolved = resolvePlayerCollisions(desiredX, desiredZ);
+            playerGroup.position.x = resolved.x;
+            playerGroup.position.z = resolved.z;
+
+            // Update Top HUD Section Indicator based on Z coordinate
+            const sectionLabel = document.getElementById("hud-section-label");
+            if (sectionLabel) {
+              if (playerGroup.position.z >= 0) {
+                sectionLabel.textContent =
+                  "📍 1-Bo'lim: Ilk Xotiralar (Foto 1–5)";
+              } else {
+                sectionLabel.textContent =
+                  "📍 2-Bo'lim: Baxtli Onlar (Foto 6–10)";
+              }
+            }
+
+            // Walking limb swing animation
+            const swing =
+              Math.sin(elapsed * 10) * 0.55 * Math.abs(forwardInput);
+            if (leftLeg && rightLeg) {
+              leftLeg.rotation.x = swing;
+              rightLeg.rotation.x = -swing;
+              leftArm.rotation.x = -swing * 0.7;
+              rightArm.rotation.x = swing * 0.7;
+            }
+          } else {
+            if (leftLeg && rightLeg) {
+              leftLeg.rotation.x *= 0.85;
+              rightLeg.rotation.x *= 0.85;
+              leftArm.rotation.x *= 0.85;
+              rightArm.rotation.x *= 0.85;
+            }
+          }
+
+          // Smooth 3rd-Person Follow Camera (also avoids getting stuck behind the partition wall)
+          const camDist = 5.8;
+          const camHeight = 3.1;
+          let idealCamX =
+            playerGroup.position.x + Math.sin(playerAngle) * camDist;
+          let idealCamZ =
+            playerGroup.position.z + Math.cos(playerAngle) * camDist;
+
+          idealCamX = Math.max(
+            -HALL_HALF_W + 0.8,
+            Math.min(HALL_HALF_W - 0.8, idealCamX),
+          );
+          idealCamZ = Math.max(
+            -HALL_HALF_L + 0.8,
+            Math.min(HALL_HALF_L - 0.8, idealCamZ),
+          );
+
+          // Prevent camera from clipping through solid partition wall wings (|X| > 2.4)
+          if (Math.abs(idealCamX) > 2.3) {
+            if (playerGroup.position.z > 0.5 && idealCamZ < 0.7) {
+              idealCamZ = 0.7;
+            } else if (playerGroup.position.z < -0.5 && idealCamZ > -0.7) {
+              idealCamZ = -0.7;
+            }
+          }
+
+          camera.position.x += (idealCamX - camera.position.x) * 0.12;
+          camera.position.z += (idealCamZ - camera.position.z) * 0.12;
+          camera.position.y += (camHeight - camera.position.y) * 0.12;
+
+          const lookTargetX =
+            playerGroup.position.x - Math.sin(playerAngle) * 3.0;
+          const lookTargetZ =
+            playerGroup.position.z - Math.cos(playerAngle) * 3.0;
+          camera.lookAt(lookTargetX, 2.3, lookTargetZ);
+
+          updateFrameProximity();
+        }
+
+        if (rotatingHeartMesh) {
+          rotatingHeartMesh.rotation.y = elapsed * 0.85;
+          rotatingHeartMesh.position.y = 2.9 + Math.sin(elapsed * 2) * 0.12;
+        }
+        if (floatingParticles) {
+          floatingParticles.rotation.y = elapsed * 0.025;
+        }
+
+        renderer.render(scene, camera);
+      }
+
+      function updateFrameProximity() {
+        let closestIdx = -1;
+        let minDist = 6.0;
+
+        framePlacements.forEach((fp, idx) => {
+          // Only trigger if on the same side of the partition wall
+          const sameSection =
+            (playerGroup.position.z >= 0 && fp.z >= 0) ||
+            (playerGroup.position.z <= 0 && fp.z <= 0);
+          if (!sameSection) return;
+
+          const d = Math.hypot(
+            playerGroup.position.x - fp.x,
+            playerGroup.position.z - fp.z,
+          );
+          if (d < minDist) {
+            minDist = d;
+            closestIdx = idx;
+          }
+        });
+
+        const promptEl = document.getElementById("proximity-prompt");
+        const promptText = document.getElementById("proximity-text");
+
+        if (closestIdx !== -1) {
+          nearbyFrameIndex = closestIdx;
+          promptText.textContent = `${photoMetaData[closestIdx].title} — Kattalashtirish`;
+          promptEl.classList.remove("hidden");
+        } else {
+          nearbyFrameIndex = -1;
+          promptEl.classList.add("hidden");
+        }
+      }
+
+      function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      }
+
+      /**************************************************************
+       * 10. UI MODALS & INTERACTION LOGIC (NO UPLOAD UI)
+       **************************************************************/
+      function selectGender(gender) {
+        selectedGender = gender;
+        document
+          .getElementById("select-boy")
+          .classList.toggle("selected", gender === "boy");
+        document
+          .getElementById("select-girl")
+          .classList.toggle("selected", gender === "girl");
+        if (scene) {
+          buildPlayerAvatar(gender);
+        }
+      }
+
+      document
+        .getElementById("btn-enter-museum")
+        .addEventListener("click", () => {
+          document.getElementById("modal-start").classList.add("hidden");
+          document.getElementById("hud-top").classList.remove("hidden");
+          document.getElementById("joystick-zone").classList.remove("hidden");
+          document.getElementById("hud-hint").classList.remove("hidden");
+          document.getElementById("hud-player-label").textContent =
+            selectedGender === "boy"
+              ? "O'yinchi: O'g'il bola 🤵"
+              : "O'yinchi: Qiz bola 👰‍♀️";
+          buildPlayerAvatar(selectedGender);
+        });
+
+      document
+        .getElementById("btn-change-avatar")
+        .addEventListener("click", () => {
+          document.getElementById("modal-start").classList.remove("hidden");
+        });
+
+      document
+        .getElementById("btn-inspect-nearby")
+        .addEventListener("click", () => {
+          if (nearbyFrameIndex !== -1) {
+            openPhotoLightbox(nearbyFrameIndex);
+          }
+        });
+
+      function openPhotoLightbox(index) {
+        activeLightboxIndex = index;
+        const meta = photoMetaData[index];
+        document.getElementById("lightbox-badge").textContent =
+          `${meta.section} • Xotira #${index + 1}`;
+        document.getElementById("lightbox-title").textContent = meta.title;
+        document.getElementById("lightbox-desc").textContent =
+          `"${meta.caption}"`;
+        document.getElementById("lightbox-img").src =
+          currentPhotoSources[index];
+
+        const secTag = document.getElementById("lightbox-section-tag");
+        if (secTag) secTag.textContent = meta.section;
+
+        const modal = document.getElementById("modal-photo");
+        modal.classList.remove("hidden");
+        modal.classList.add("flex");
+      }
+
+      function closePhotoLightbox() {
+        const modal = document.getElementById("modal-photo");
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      }
+
+      document
+        .getElementById("btn-close-photo")
+        .addEventListener("click", closePhotoLightbox);
+
+      document
+        .getElementById("btn-prev-photo")
+        .addEventListener("click", () => {
+          const prev = (activeLightboxIndex - 1 + 10) % 10;
+          openPhotoLightbox(prev);
+        });
+
+      document
+        .getElementById("btn-next-photo")
+        .addEventListener("click", () => {
+          const next = (activeLightboxIndex + 1) % 10;
+          openPhotoLightbox(next);
+        });
+
+      /**************************************************************
+       * 11. INITIALIZE ON WINDOW LOAD
+       **************************************************************/
+      window.onload = function () {
+        initLoadAllPhotos();
+        initThreeMuseum();
+      };
+    </script>
+  </body>
+</html>
